@@ -530,9 +530,10 @@ function makeAdTex(txt) {
 }
 function adPlane() {
   const tex = makeAdTex(ADS[(Math.random()*ADS.length)|0]);
-  const mat = new THREE.MeshBasicMaterial({ map:tex, transparent:true, opacity:.95 });
-  const p = new THREE.Mesh(new THREE.PlaneGeometry(2.6, .98), mat);
-  p.position.z = .81; p.position.y = 1.45;
+  const mat = new THREE.SpriteMaterial({ map:tex, transparent:true, opacity:.95 });
+  const p = new THREE.Sprite(mat);
+  p.scale.set(2.6, .98, 1);
+  p.position.set(0, 1.45, 0);
   p.userData.ad = true;
   return p;
 }
