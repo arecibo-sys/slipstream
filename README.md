@@ -2,6 +2,8 @@
 
 An endless **gravity-surf racer** — carve an infinite procedural ribbon of light through five shifting zones. Single HTML file, Three.js + Web Audio, no build step, no assets.
 
+**▶ Play it: [arecibo-sys.github.io/slipstream](https://arecibo-sys.github.io/slipstream/)** — works on desktop, phone and iPad.
+
 A completely different genre from [voxel-robots](https://github.com/arecibo-sys/voxel-robots) / [voxel-robots-dark-ultimate](https://github.com/arecibo-sys/voxel-robots-dark-ultimate), built to the same bar: one file, procedural everything, smooth at 60fps.
 
 **Controls:** `A`/`D` or `◄`/`►` steer · `SHIFT`/`SPACE` boost · `ESC` pause · mobile: drag to steer + boost button
