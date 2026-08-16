@@ -376,6 +376,9 @@ const M = {
   deck:   new THREE.MeshLambertMaterial({ color:0x241a3e }),
   stripe: new THREE.MeshLambertMaterial({ color:0x38285c }),
   rail:   new THREE.MeshBasicMaterial({ color:0xffb347 }),
+  pulse:  new THREE.MeshBasicMaterial({ color:0xffb347, transparent:true, opacity:.6 }),
+  sideWall:  new THREE.MeshBasicMaterial({ color:0xff6b3d, transparent:true, opacity:.16 }),
+  sideWallCore: new THREE.MeshBasicMaterial({ color:0xffb347, transparent:true, opacity:.9 }),
   obst:   new THREE.MeshLambertMaterial({ color:0x120a24 }),
   wall:   new THREE.MeshBasicMaterial({ color:0xff6b3d, transparent:true, opacity:.9 }),
   obstEm: new THREE.MeshBasicMaterial({ color:0xff5c8a }),
@@ -487,17 +490,37 @@ const tilePool = [];
   const deckGeo = new THREE.BoxGeometry(TRACKW, .5, DS + .25);
   const stripeGeo = new THREE.BoxGeometry(.5, .54, DS + .25);
   const railGeo = new THREE.BoxGeometry(.32, .32, DS + .3);
+  const wallGeo = new THREE.BoxGeometry(.14, 3.2, DS + .3);
   for (let j = 0; j < TILES; j++) {
     const g = new THREE.Group();
     const deck = new THREE.Mesh(deckGeo, j % 2 ? M.deck : M.stripe);
     const mid = new THREE.Mesh(stripeGeo, M.stripe); mid.position.y = .02;
     const rl = new THREE.Mesh(railGeo, M.rail); rl.position.set(-HALFW - .1, .35, 0);
     const rr = new THREE.Mesh(railGeo, M.rail); rr.position.set(HALFW + .1, .35, 0);
-    g.add(deck, mid, rl, rr);
+    // glowing Tron-style side walls (stream past = speed + neon)
+    const wl = new THREE.Mesh(wallGeo, M.sideWall); wl.position.set(-HALFW - .12, 1.6, 0);
+    const wr = new THREE.Mesh(wallGeo, M.sideWall); wr.position.set(HALFW + .12, 1.6, 0);
+    const wlC = new THREE.Mesh(wallGeo, M.sideWallCore); wlC.position.set(-HALFW - .12, 1.6, 0); wlC.scale.set(.35, .5, 1);
+    const wrC = new THREE.Mesh(wallGeo, M.sideWallCore); wrC.position.set(HALFW + .12, 1.6, 0); wrC.scale.set(.35, .5, 1);
+    // animated center pulse strip (light runs toward player = speed cue)
+    const pulse = new THREE.Mesh(new THREE.BoxGeometry(.18, .06, DS + .25), M.pulse);
+    pulse.position.y = .28;
+    g.add(deck, mid, rl, rr, wl, wr, wlC, wrC, pulse);
     g.userData.i = -1;
     scene.add(g);
     tilePool.push(g);
   }
+}
+/* animate the center pulse strips running toward the player */
+function updatePulses(dt){
+  const t = now % 2;
+  tilePool.forEach(g => {
+    const n = g.children[7];
+    if (!n) return;
+    const f = ((t * 1.4 + g.userData.i % 2) % 2 - .5) * 2; // oscillate
+    n.position.z = (t + (g.userData.i % 2)) * DS;
+    n.material.opacity = .15 + Math.abs(f) * .55;
+  });
 }
 function layoutTiles(curIdx) {
   const start = curIdx - 6;
@@ -668,6 +691,49 @@ scene.add(bike);
 const parts = [];
 const partGeo = new THREE.BoxGeometry(.22, .22, .22);
 const partPool = [];
+/* speed streaks — fast additive light-lines streaming past the camera */
+const STREAKS = 34;
+const streakMats = [
+  new THREE.MeshBasicMaterial({ color:0xffffff, transparent:true, opacity:.5 }),
+  new THREE.MeshBasicMaterial({ color:0x7dfbff, transparent:true, opacity:.5 }),
+  new THREE.MeshBasicMaterial({ color:0xffb347, transparent:true, opacity:.5 }),
+];
+const streaks = [];
+(function initStreaks(){
+  for (let i = 0; i < STREAKS; i++){
+    const m = new THREE.Mesh(new THREE.BoxGeometry(.06, .5 + Math.random()*1.4, .5), streakMats[i%3]);
+    m.userData = { spd:0, life:0, t:0, len:.5 };
+    m.frustumCulled = false;
+    scene.add(m);
+    streaks.push(m);
+  }
+})();
+function updateStreaks(dt){
+  const c = camera.position;
+  for (const m of streaks){
+    const u = m.userData;
+    u.t += dt;
+    if (u.t > u.life){
+      // respawn at random point around camera, aimed forward
+      u.spd = 45 + Math.random()*70;
+      u.life = .35 + Math.random()*.35;
+      u.t = 0;
+      const ang = Math.random()*6.283, r = 6 + Math.random()*16;
+      const fwd = camLook.clone().sub(camPos).normalize();
+      const side = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0,1,0)).normalize();
+      const up = new THREE.Vector3().crossVectors(side, fwd);
+      m.position.copy(c)
+        .add(side.clone().multiplyScalar(Math.cos(ang)*r))
+        .add(up.clone().multiplyScalar(Math.sin(ang)*r))
+        .add(fwd.clone().multiplyScalar(2+Math.random()*6));
+      m.scale.set(1, 1, u.len);
+    }
+    // move back (toward camera) over its life
+    const back = camLook.clone().sub(camPos).normalize();
+    m.position.addScaledVector(back, u.spd * dt);
+    m.material.opacity = .5 * (1 - u.t / u.life);
+  }
+}
 function spawnPart(x, y, z, vx, vy, vz, mat, life, scale = 1) {
   let m = partPool.pop();
   if (!m) { m = new THREE.Mesh(partGeo, mat); scene.add(m); }
@@ -897,6 +963,8 @@ function applyBiome(bi) {
   hemi.color.set(b.skyMid); hemi.groundColor.set(b.fog);
   M.deck.color.set(b.deck); M.stripe.color.set(b.stripe);
   M.rail.color.set(b.rail);
+  M.pulse.color.set(b.rail);
+  M.sideWall.color.set(b.rail); M.sideWallCore.color.set(b.rail);
   M.obst.color.set(b.obst); M.obstEm.color.set(b.obstEm);
   M.shard.color.set(b.shard); M.ring.color.set(b.ring);
   M.pad.color.set(b.shard);
@@ -1344,6 +1412,7 @@ function loop() {
     state.tScale += (1 - state.tScale) * dt * .8;
     dt *= state.tScale;
     updateParts(dt);
+    updateStreaks(dt);
     updateCamera(dt);
     if (state.crashT > 1.5) { bike.visible = true; gameOver(); }
     renderer.render(scene, camera);
@@ -1351,6 +1420,8 @@ function loop() {
   }
   if (state.phase === 'play') {
     update(dt);
+    updateStreaks(dt);
+    updatePulses(dt);
   } else if (state.phase === 'menu' || state.phase === 'over') {
     /* slow cinematic drift behind menu */
     menuDist += 9 * dt;
@@ -1362,6 +1433,7 @@ function loop() {
     trackPos(state.dist + 4, state.latX, posB);
     bike.lookAt(posB.x, posA.y + 1.05, posB.z);
     updateParts(dt);
+    updateStreaks(dt);
   }
   if (state.phase !== 'paused') updateCamera(dt);
   renderer.render(scene, camera);
