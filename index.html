@@ -377,6 +377,7 @@ const M = {
   stripe: new THREE.MeshLambertMaterial({ color:0x38285c }),
   rail:   new THREE.MeshBasicMaterial({ color:0xffb347 }),
   obst:   new THREE.MeshLambertMaterial({ color:0x120a24 }),
+  wall:   new THREE.MeshBasicMaterial({ color:0xff6b3d, transparent:true, opacity:.9 }),
   obstEm: new THREE.MeshBasicMaterial({ color:0xff5c8a }),
   shard:  new THREE.MeshBasicMaterial({ color:0x7dfbff }),
   ring:   new THREE.MeshBasicMaterial({ color:0xffd75e }),
@@ -526,8 +527,8 @@ function makeMesh(kind) {
     g.add(core, glow, glow2);
   } else if (kind === 'gate') {
     g = new THREE.Group();
-    const l = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 1.2), M.obst); l.userData.side = 'l';
-    const r = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 1.2), M.obst); r.userData.side = 'r';
+    const l = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 1.2), M.wall); l.userData.side = 'l';
+    const r = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 1.2), M.wall); r.userData.side = 'r';
     const le = new THREE.Mesh(new THREE.BoxGeometry(.3, 3, 1.35), M.obstEm); le.userData.side = 'le';
     const re = new THREE.Mesh(new THREE.BoxGeometry(.3, 3, 1.35), M.obstEm); re.userData.side = 're';
     g.add(l, r, le, re);
@@ -1017,8 +1018,8 @@ addEventListener('touchmove', e => {
   if (touchSteer === null) return;
   for (const t of e.changedTouches) {
     if (t.identifier === touchSteer.id) {
-      const dxs = (t.clientX - touchSteer.startX) / (innerWidth * .28);
-      state.touchTarget = Math.max(-LAT_MAX, Math.min(LAT_MAX, touchSteer.startLat + dxs * LAT_MAX * 2));
+      const dxs = (t.clientX - touchSteer.startX) / (innerWidth * .55);
+      state.touchTarget = Math.max(-LAT_MAX, Math.min(LAT_MAX, touchSteer.startLat + dxs * LAT_MAX * 1.2));
     }
   }
   e.preventDefault();
@@ -1087,7 +1088,7 @@ function update(dt) {
   const prevDist = state.dist;
 
   /* speed */
-  const baseSpeed = 26 + Math.min(38, state.dist * .004);
+  const baseSpeed = 22 + Math.min(24, state.dist * .003);
   state.boosting = (state.boostHeld || keys['ShiftLeft'] || keys['ShiftRight'] || keys['Space']) && state.boost > 0 && state.phase === 'play';
   if (state.boosting) {
     state.boost -= 26 * dt;
@@ -1110,8 +1111,8 @@ function update(dt) {
     const d = state.touchTarget - state.latX;
     input = Math.max(-1, Math.min(1, d * 1.4));
   }
-  state.steer += (input - state.steer) * Math.min(1, dt * 16);
-  state.latV += (state.steer * 30 - state.latV) * Math.min(1, dt * 12);
+  state.steer += (input - state.steer) * Math.min(1, dt * 10);
+  state.latV += (state.steer * 9 - state.latV) * Math.min(1, dt * 6);
   state.latX += state.latV * dt;
   if (state.latX > LAT_MAX) { state.latX = LAT_MAX; state.latV = Math.min(0, state.latV); }
   if (state.latX < -LAT_MAX) { state.latX = -LAT_MAX; state.latV = Math.max(0, state.latV); }
