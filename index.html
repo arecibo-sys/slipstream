@@ -670,6 +670,7 @@ function initAudio() {
   if (AU.ctx) { AU.ctx.resume(); return; }
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   AU.ctx = ctx;
+  if (ctx.state === 'suspended') ctx.resume();
   AU.master = ctx.createGain(); AU.master.gain.value = .6; AU.master.connect(ctx.destination);
   AU.musGain = ctx.createGain(); AU.musGain.gain.value = AU.musicOn ? .5 : 0; AU.musGain.connect(AU.master);
   AU.sfxGain = ctx.createGain(); AU.sfxGain.gain.value = AU.muted ? 0 : .55; AU.sfxGain.connect(AU.master);
@@ -1109,8 +1110,8 @@ function update(dt) {
     const d = state.touchTarget - state.latX;
     input = Math.max(-1, Math.min(1, d * 1.4));
   }
-  state.steer += (input - state.steer) * Math.min(1, dt * 9);
-  state.latV += (state.steer * 24 - state.latV) * Math.min(1, dt * 7);
+  state.steer += (input - state.steer) * Math.min(1, dt * 16);
+  state.latV += (state.steer * 30 - state.latV) * Math.min(1, dt * 12);
   state.latX += state.latV * dt;
   if (state.latX > LAT_MAX) { state.latX = LAT_MAX; state.latV = Math.min(0, state.latV); }
   if (state.latX < -LAT_MAX) { state.latX = -LAT_MAX; state.latV = Math.max(0, state.latV); }
